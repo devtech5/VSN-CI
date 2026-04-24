@@ -1,0 +1,305 @@
+// ─── VSN-CI Mobile Money — Prisma Schema ─────────────────────────────────────
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN_AGENCE
+  AGENT
+  CAISSIER
+}
+
+enum StatutUser {
+  ACTIF
+  INACTIF
+  SUSPENDU
+}
+
+enum StatutAgence {
+  ACTIVE
+  INACTIVE
+  SUSPENDUE
+}
+
+enum StatutAgent {
+  ACTIF
+  INACTIF
+  EN_CONGE
+  SUSPENDU
+}
+
+enum TypeTransaction {
+  DEPOT
+  RETRAIT
+  TRANSFERT
+  PAIEMENT
+  RECHARGEMENT
+  REMBOURSEMENT
+}
+
+enum StatutTransaction {
+  EN_ATTENTE
+  VALIDEE
+  ECHOUEE
+  ANNULEE
+  REMBOURSEE
+}
+
+enum TypeReseau {
+  WAVE
+  MTN
+  ORANGE
+  MOOV
+  AUTRE
+}
+
+enum TypeDepense {
+  LOYER
+  SALAIRE
+  FOURNITURES
+  TRANSPORT
+  COMMUNICATION
+  AUTRE
+}
+
+enum StatutDepense {
+  EN_ATTENTE
+  APPROUVEE
+  REJETEE
+  PAYEE
+}
+
+enum TypeContrat {
+  CDI
+  CDD
+  STAGE
+  FREELANCE
+}
+
+// ─── USER ─────────────────────────────────────────────────────────────────────
+
+model User {
+  id            String     @id @default(uuid())
+  nom           String
+  prenom        String
+  email         String     @unique
+  telephone     String     @unique
+  motDePasse    String
+  role          Role       @default(AGENT)
+  statut        StatutUser @default(ACTIF)
+  avatar        String?
+  dernierLogin  DateTime?
+  otpSecret     String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  agence        Agence?    @relation("AgenceResponsable", fields: [agenceId], references: [id])
+  agenceId      String?
+
+  agentProfil   Agent?
+
+  transactions  Transaction[] @relation("TransactionAgent")
+  depenses      Depense[]     @relation("DepenseCreateur")
+  otps          Otp[]
+
+  @@map("users")
+}
+
+model Otp {
+  id        String   @id @default(uuid())
+  code      String
+  expiresAt DateTime
+  utilisé   Boolean  @default(false)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@map("otps")
+}
+
+// ─── AGENCE ───────────────────────────────────────────────────────────────────
+
+model Agence {
+  id           String      @id @default(uuid())
+  code         String      @unique
+  nom          String
+  adresse      String
+  ville        String
+  telephone    String
+  email        String?
+  statut       StatutAgence @default(ACTIVE)
+  latitude     Float?
+  longitude    Float?
+  solde        Float       @default(0)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  responsables User[]      @relation("AgenceResponsable")
+  agents       Agent[]
+  transactions Transaction[] @relation("TransactionAgence")
+  approvisionnements Approvisionnement[]
+  depenses     Depense[]
+  comptesReseau CompteReseau[]
+
+  @@map("agences")
+}
+
+// ─── AGENT ────────────────────────────────────────────────────────────────────
+
+model Agent {
+  id           String     @id @default(uuid())
+  matricule    String     @unique
+  statut       StatutAgent @default(ACTIF)
+  solde        Float      @default(0)
+  soldeFlottant Float     @default(0)
+  typeContrat  TypeContrat @default(CDI)
+  dateEmbauche DateTime
+  dateFin      DateTime?
+  salaire      Float?
+  commission   Float      @default(0)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String     @unique
+
+  agence       Agence     @relation(fields: [agenceId], references: [id])
+  agenceId     String
+
+  transactions  Transaction[] @relation("TransactionOperateur")
+
+  @@map("agents")
+}
+
+// ─── RÉSEAU / OPÉRATEUR ───────────────────────────────────────────────────────
+
+model Reseau {
+  id           String     @id @default(uuid())
+  nom          String
+  type         TypeReseau
+  couleur      String     @default("#000000")
+  logo         String?
+  actif        Boolean    @default(true)
+  tauxCommission Float    @default(0)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  transactions  Transaction[]
+  comptesReseau CompteReseau[]
+
+  @@map("reseaux")
+}
+
+model CompteReseau {
+  id        String   @id @default(uuid())
+  numero    String
+  solde     Float    @default(0)
+  actif     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reseau    Reseau   @relation(fields: [reseauId], references: [id])
+  reseauId  String
+
+  agence    Agence   @relation(fields: [agenceId], references: [id])
+  agenceId  String
+
+  @@unique([reseauId, agenceId])
+  @@map("comptes_reseau")
+}
+
+// ─── TRANSACTION ──────────────────────────────────────────────────────────────
+
+model Transaction {
+  id              String           @id @default(uuid())
+  reference       String           @unique @default(cuid())
+  type            TypeTransaction
+  statut          StatutTransaction @default(EN_ATTENTE)
+  montant         Float
+  frais           Float            @default(0)
+  montantNet      Float
+  numeroClient    String
+  nomClient       String?
+  description     String?
+  metadata        Json?
+  valideeAt       DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  reseau          Reseau?          @relation(fields: [reseauId], references: [id])
+  reseauId        String?
+
+  agence          Agence           @relation("TransactionAgence", fields: [agenceId], references: [id])
+  agenceId        String
+
+  agent           User             @relation("TransactionAgent", fields: [agentId], references: [id])
+  agentId         String
+
+  operateur       Agent?           @relation("TransactionOperateur", fields: [operateurId], references: [id])
+  operateurId     String?
+
+  @@map("transactions")
+}
+
+// ─── APPROVISIONNEMENT ────────────────────────────────────────────────────────
+
+model Approvisionnement {
+  id          String   @id @default(uuid())
+  montant     Float
+  description String?
+  validé      Boolean  @default(false)
+  validéAt    DateTime?
+  createdAt   DateTime @default(now())
+
+  agence      Agence   @relation(fields: [agenceId], references: [id])
+  agenceId    String
+
+  @@map("approvisionnements")
+}
+
+// ─── DÉPENSE ──────────────────────────────────────────────────────────────────
+
+model Depense {
+  id          String        @id @default(uuid())
+  libelle     String
+  type        TypeDepense
+  montant     Float
+  statut      StatutDepense @default(EN_ATTENTE)
+  description String?
+  pieceJointe String?
+  dateDepense DateTime      @default(now())
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  agence      Agence        @relation(fields: [agenceId], references: [id])
+  agenceId    String
+
+  createur    User          @relation("DepenseCreateur", fields: [createurId], references: [id])
+  createurId  String
+
+  @@map("depenses")
+}
+
+// ─── PARAMÈTRES SÉCURITÉ ──────────────────────────────────────────────────────
+
+model ParametreSecurite {
+  id                    String   @id @default(uuid())
+  otpActif              Boolean  @default(true)
+  dureeOtpMinutes       Int      @default(5)
+  tentativesMaxLogin    Int      @default(5)
+  dureeSessionHeures    Int      @default(8)
+  ipWhitelist           String[] @default([])
+  alerteSmsActif        Boolean  @default(true)
+  alerteEmailActif      Boolean  @default(true)
+  updatedAt             DateTime @updatedAt
+
+  @@map("parametres_securite")
+}
