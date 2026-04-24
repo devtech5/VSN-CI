@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Wallet, ShieldCheck, Loader2, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
@@ -12,7 +12,15 @@ import { cn } from '@/lib/utils';
 const OTP_LENGTH = 6;
 const TIMER_SECONDS = 5 * 60; // 5 minutes
 
-export default function OtpPage() {
+export default function OtpPageWrapper() {
+  return (
+    <Suspense fallback={null}>
+      <OtpPage />
+    </Suspense>
+  );
+}
+
+function OtpPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const userId = searchParams.get('userId') ?? '';
