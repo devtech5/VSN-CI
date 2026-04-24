@@ -18,7 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <title>VSN-CI Mobile Money</title>
         <meta name="description" content="Plateforme de gestion Mobile Money VSN-CI" />
       </head>
-      <body className={`${inter.className} h-full bg-[#f8f9fa]`}>
+      <body className={`${inter.className} h-full bg-[#f8f9fa]`} suppressHydrationWarning>
         <QueryClientProvider client={queryClient}>
           {children}
           <Toaster richColors position="top-right" />

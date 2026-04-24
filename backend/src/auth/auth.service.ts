@@ -7,7 +7,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
-import dayjs from 'dayjs';
+import * as dayjs from 'dayjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { LoginDto, VerifyOtpDto, ChangePasswordDto } from './dto/auth.dto';
@@ -71,7 +71,7 @@ export class AuthService {
   // ─── VÉRIFICATION OTP ─────────────────────────────────────────────────────
   async verifyOtp(dto: VerifyOtpDto) {
     const otps = await this.prisma.otp.findMany({
-      where: { userId: dto.userId, utilisé: false },
+      where: { userId: dto.userId, utilise: false },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -86,8 +86,8 @@ export class AuthService {
     const codeValide = await bcrypt.compare(dto.code, otp.code);
     if (!codeValide) throw new BadRequestException('Code OTP incorrect');
 
-    // Marquer OTP comme utilisé
-    await this.prisma.otp.update({ where: { id: otp.id }, data: { utilisé: true } });
+    // Marquer OTP comme utilise
+    await this.prisma.otp.update({ where: { id: otp.id }, data: { utilise: true } });
 
     const user = await this.prisma.user.findUnique({ where: { id: dto.userId } });
     return this.genererTokens(user);

@@ -117,7 +117,7 @@ model Otp {
   id        String   @id @default(uuid())
   code      String
   expiresAt DateTime
-  utilisé   Boolean  @default(false)
+  utilise   Boolean  @default(false)
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
@@ -255,8 +255,8 @@ model Approvisionnement {
   id          String   @id @default(uuid())
   montant     Float
   description String?
-  validé      Boolean  @default(false)
-  validéAt    DateTime?
+  valide      Boolean  @default(false)
+  valideAt    DateTime?
   createdAt   DateTime @default(now())
 
   agence      Agence   @relation(fields: [agenceId], references: [id])
