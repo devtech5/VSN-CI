@@ -140,8 +140,8 @@ export class AgencesService {
           montant: dto.montant,
           description: dto.description,
           agenceId,
-          validé: true,
-          validéAt: new Date(),
+          valide: true,
+          valideAt: new Date(),
         },
       }),
       this.prisma.agence.update({
@@ -170,7 +170,7 @@ export class AgencesService {
 
     const finMois = new Date(debutMois.getFullYear(), debutMois.getMonth() + 1, 0, 23, 59, 59, 999);
 
-    const [agence, nbAgents, transactionsMois, volumesParReseau] = await Promise.all([
+    const [agence, nbAgents, transactionsMois] = await Promise.all([
       this.prisma.agence.findUnique({
         where: { id },
         select: { solde: true },
